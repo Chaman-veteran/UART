@@ -48,7 +48,8 @@ ARCHITECTURE behavior OF testTxUnit IS
          txd : OUT  std_logic;
          regE : OUT  std_logic;
          bufE : OUT  std_logic;
-         data : IN  std_logic_vector(7 downto 0)
+         data : IN  std_logic_vector(7 downto 0);
+			etat_dbg : OUT natural
         );
     END COMPONENT;
    
@@ -71,6 +72,7 @@ ARCHITECTURE behavior OF testTxUnit IS
    signal txd : std_logic;
    signal regE : std_logic;
    signal bufE : std_logic;
+	signal etat_dbg : natural;
 
    -- Clock period definitions
    constant clk_period : time := 10 ns;
@@ -86,7 +88,8 @@ BEGIN
           txd => txd,
           regE => regE,
           bufE => bufE,
-          data => data
+          data => data,
+			 etat_dbg => etat_dbg
         );
 
    -- Instantiate the clkUnit

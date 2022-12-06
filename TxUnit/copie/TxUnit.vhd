@@ -35,9 +35,8 @@ begin
 			bufferE := '1';
 			regE <= '1';
 			txd <= '1';
-			par <= '1';
 			cpt := 7;
-		elsif (rising_edge(clk) and enable = '1') then
+		elsif (rising_edge(clk)) then
 			-- Cas nominal du process a chaque front montant de **clk**
 			case etat is
 				when Attente =>
@@ -46,7 +45,7 @@ begin
 						bufferT <= data;
 						bufferE := '0';
 						etat := Chargement;
-						cpt := 8;
+						cpt := 7;
 					else
 						-- NOP
 					end if;
@@ -57,22 +56,24 @@ begin
 					regE <= '0';
 					etat := BitStart;
 				when BitStart =>
-					etat_dbg <= 3;
-					if ld = '1' and bufferE = '1' then
-						-- stockage de data dans le buffer par anticipation
-						bufferT <= data;
-						bufferE := '0';
+					etat_dbg <= 3;				
+					if enable = '1' then
+						if ld = '1' and bufferE = '1' then
+							-- stockage de data dans le buffer par anticipation
+							bufferT <= data;
+							bufferE := '0';
+						else
+							-- NOP
+						end if;
+						
+						txd <= '0';
+						etat := Emission;
 					else
 						-- NOP
 					end if;
-					
-					txd <= '0';
-					etat := Emission;
 				when Emission =>
-					-- lowering CPT
-					cpt := cpt - 1;
 					etat_dbg <= 4;
-					if ld = '1' and bufferE = '1' then
+					if ld = '1' and bufferE = '1' and enable = '1' then
 						-- stockage de data dans le buffer par anticipation
 						bufferT <= data;
 						bufferE := '0';
@@ -80,45 +81,53 @@ begin
 						-- NOP
 					end if;
 					
-					if cpt > 0 then
+					if enable = '1' and cpt > 0 then
 						txd <= registerT(cpt);
 						par <= par xor registerT(cpt);
 						-- On reste dans l'etat Emission
-					else
+					elsif enable = '1' then
 						txd <= registerT(cpt);
 						par <= par xor registerT(cpt);
 						etat := Parite;
-					end if;
-				when Parite =>
-					etat_dbg <= 5;
-				
-					if ld = '1' and bufferE = '1' then
-						-- stockage de data dans le buffer par anticipation
-						bufferT <= data; 
-						bufferE := '0';
 					else
 						-- NOP
 					end if;
-					
-					txd <= par;
-					etat := BitStop;
+				when Parite =>
+					etat_dbg <= 5;
+					if enable = '1' then
+						if ld = '1' and bufferE = '1' then
+							-- stockage de data dans le buffer par anticipation
+							bufferT <= data; 
+							bufferE := '0';
+						else
+							-- NOP
+						end if;
+						
+						txd <= par;
+						etat := BitStop;
+					else
+						-- NOP
+					end if;
 				when BitStop =>
 					etat_dbg <= 6;
-				
-					txd <= '1';
-					regE <= '1';
-					if bufferE = '0' then
-						etat := Chargement;
-					else
-						etat := Attente;
-					end if;
-					
-					if ld = '1' and bufferE = '1' then
-						-- stockage de data dans le buffer par anticipation
-						bufferT <= data;
-						bufferE := '0';
-						etat := Chargement; 	-- dans le cas ou un ordre est donné au dernier moment, 
-													-- il faut directement repasser en Chargement
+					if enable = '1' then
+						txd <= '1';
+						regE <= '1';
+						if bufferE = '0' then
+							etat := Chargement;
+						else
+							etat := Attente;
+						end if;
+						
+						if ld = '1' and bufferE = '1' then
+							-- stockage de data dans le buffer par anticipation
+							bufferT <= data;
+							bufferE := '0';
+							etat := Chargement; 	-- dans le cas ou un ordre est donné au dernier moment, 
+														-- il faut directement repasser en Chargement
+						else
+							-- NOP
+						end if;
 					else
 						-- NOP
 					end if;
