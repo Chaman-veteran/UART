@@ -48,8 +48,8 @@ ARCHITECTURE behavior OF testTxUnit IS
          txd : OUT  std_logic;
          regE : OUT  std_logic;
          bufE : OUT  std_logic;
-         data : IN  std_logic_vector(7 downto 0);
-			etat_dbg : OUT natural
+         data : IN  std_logic_vector(7 downto 0)
+			-- etat_dbg : OUT natural
         );
     END COMPONENT;
    
@@ -72,7 +72,7 @@ ARCHITECTURE behavior OF testTxUnit IS
    signal txd : std_logic;
    signal regE : std_logic;
    signal bufE : std_logic;
-	signal etat_dbg : natural;
+	-- signal etat_dbg : natural;
 
    -- Clock period definitions
    constant clk_period : time := 10 ns;
@@ -88,8 +88,8 @@ BEGIN
           txd => txd,
           regE => regE,
           bufE => bufE,
-          data => data,
-			 etat_dbg => etat_dbg
+          data => data
+			 -- etat_dbg => etat_dbg
         );
 
    -- Instantiate the clkUnit
@@ -139,11 +139,40 @@ BEGIN
      wait for clk_period;
      ld <= '0';
 
-     -- compléter avec des tests qui montrent que la prise
-     -- en compte de la demande d'émission d'un second
-     -- caractère se fait lorsqu'on émet un premier caractère
-     -- et ceci quelque soit l'étape d'émission
+     wait for 3000 ns;
+     	
+     -- maintien du reset durant 100 ns.
+	  reset <= '0';
+     wait for 100 ns;
+     reset <= '1';
 
+     -- l'émetteur est dispo ?
+     if not (regE='1' and bufE='1') then
+       wait until regE='1' and bufE='1';
+     end if;
+
+     -- si oui, on charge la donnée
+     wait for clk_period;
+     -- émission d'un autre caractère
+     data <= "01010101";
+     ld <= '1';
+
+     -- on attend de voir que l'ordre d'émission
+     -- a été bien pris en compte avant de rabaisser
+     -- le signal ld
+     if not (regE='1' and bufE='0') then
+       wait until regE='1' and bufE='0';
+     end if;
+     wait for clk_period;
+     ld <= '0';
+	  wait for clk_period * 15;
+	  -- envoi anticipé d'un second caractère
+	  data <= "10101010";
+	  ld <= '1';
+		if not (regE='1' and bufE='0') then 
+			wait until regE='1' and bufE='0';
+		end if;
+	  ld <= '0';
      wait;
    end process;
 
