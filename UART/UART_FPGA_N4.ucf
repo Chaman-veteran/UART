@@ -69,8 +69,8 @@ NET "btnR"				LOC = "R10"	| IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_
 NET "btnD"				LOC = "V10"	| IOSTANDARD = "LVCMOS33";		#Bank = 14, Pin name = IO_L21P_T3_DQS_14,				Sch name = BTND
 
 ## Additional entries (JTAG): see manual page 9
-NET "txdGoesHere"				LOC = "C4"	|IOSTANDARD = "LVCMOS33";
-NET "rxdComesFromHere"		LOC = "D4"	|IOSTANDARD = "LVCMOS33";
+NET "txdpin"						LOC = "D4"	|IOSTANDARD = "LVCMOS33";
+NET "rxdpin"						LOC = "C4"	|IOSTANDARD = "LVCMOS33";
 # As stated in the manual, these are optional :
 # NET "ctsComesFromHere"		LOC = "D3"	|IOSTANDARD = "LVCMOS33";
 # NET "rtsGoesHere"				LOC = "E5"	|IOSTANDARD = "LVCMOS33";

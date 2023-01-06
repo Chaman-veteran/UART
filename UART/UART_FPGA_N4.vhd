@@ -19,8 +19,8 @@ entity UART_FPGA_N4 is
     -- valeur affichée sur les 7 segments (point décimal compris, segment 7)
     ssg : out std_logic_vector (7 downto 0);
     -- ligne série (à rajouter)
-	 txdGoesHere : out std_logic;
-	 rxdComesFromHere: in std_logic
+	 txdpin : out std_logic;
+	 rxdpin : in std_logic
   );
 end UART_FPGA_N4;
 
@@ -94,8 +94,8 @@ begin
 		cs => cs,
 		rd => rd,
 		wr => wr,
-		RxD => rxdComesFromHere,
-		TxD => txdGoesHere,
+		RxD => rxdpin,
+		TxD => txdpin,
 		IntR => intR,
 		IntT => intT,
 		addr => addr,
