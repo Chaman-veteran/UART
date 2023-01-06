@@ -38,6 +38,15 @@ begin
 			par <= '1';
 			cpt := 7;
 		elsif (rising_edge(clk) and enable = '1') then
+			-- factorisation du if
+			-- Rq: pour attente et chargement il n'est pas nécessaire
+			if ld = '1' and bufferE = '1' then
+				-- stockage de data dans le buffer par anticipation
+				bufferT <= data;
+				bufferE := '0';
+			else
+				-- NOP
+					end if;
 			-- Cas nominal du process a chaque front montant de **clk**
 			case etat is
 				when Attente =>
@@ -58,71 +67,35 @@ begin
 					etat := BitStart;
 				when BitStart =>
 					-- etat_dbg <= 3;
-					if ld = '1' and bufferE = '1' then
-						-- stockage de data dans le buffer par anticipation
-						bufferT <= data;
-						bufferE := '0';
-					else
-						-- NOP
-					end if;
-					
 					txd <= '0';
 					etat := Emission;
 				when Emission =>
 					-- lowering CPT
 					cpt := cpt - 1;
 					-- etat_dbg <= 4;
-					if ld = '1' and bufferE = '1' then
-						-- stockage de data dans le buffer par anticipation
-						bufferT <= data;
-						bufferE := '0';
-					else
-						-- NOP
-					end if;
+					txd <= registerT(cpt);
+					par <= par xor registerT(cpt);
 					
 					if cpt > 0 then
-						txd <= registerT(cpt);
-						par <= par xor registerT(cpt);
 						-- On reste dans l'etat Emission
 					else
-						txd <= registerT(cpt);
-						par <= par xor registerT(cpt);
 						etat := Parite;
 					end if;
 				when Parite =>
-					-- etat_dbg <= 5;
-				
-					if ld = '1' and bufferE = '1' then
-						-- stockage de data dans le buffer par anticipation
-						bufferT <= data; 
-						bufferE := '0';
-					else
-						-- NOP
-					end if;
-					
+					-- etat_dbg <= 5;					
 					txd <= par;
 					etat := BitStop;
 				when BitStop =>
 					-- etat_dbg <= 6;
-				
 					txd <= '1';
 					regE <= '1';
-					if bufferE = '0' then
+					if bufferE = '0' or ld = '1' then
+						-- dans le cas ou un ordre est donné au dernier moment (ld = '1'), 
+						-- il faut directement repasser en Chargement
 						etat := Chargement;
 						cpt := 8;
-
 					else
 						etat := Attente;
-					end if;
-					
-					if ld = '1' and bufferE = '1' then
-						-- stockage de data dans le buffer par anticipation
-						bufferT <= data;
-						bufferE := '0';
-						etat := Chargement; 	-- dans le cas ou un ordre est donné au dernier moment, 
-													-- il faut directement repasser en Chargement
-					else
-						-- NOP
 					end if;
 			end case;
 		end if;
