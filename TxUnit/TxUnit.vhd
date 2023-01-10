@@ -18,12 +18,13 @@ architecture behavorial of TxUnit is
 	signal bufferT : std_logic_vector(7 downto 0);
 	signal registerT : std_logic_vector(7 downto 0);
 	signal par : std_logic;
+	signal bufferE : std_logic; -- bufferE = 1 ssi bufferT vide
+
 begin
 	process (clk, reset)
 		TYPE type_etat is (Attente, Chargement, BitStart, Emission, Parite, BitStop); 
 		variable etat : type_etat := Attente;
 		variable cpt : natural := 7;
-		variable bufferE : std_logic; -- bufferE = 1 ssi bufferT vide
 	begin
 		bufE <= bufferE;
 		if reset = '0' then
@@ -32,18 +33,18 @@ begin
 			-- etat_dbg <= 0;
 			-- Valeur par défaut des signaux
 			bufE <= '1';
-			bufferE := '1';
+			bufferE <= '1';
 			regE <= '1';
 			txd <= '1';
 			par <= '1';
 			cpt := 7;
-		elsif (rising_edge(clk) and enable = '1') then
+		elsif rising_edge(clk) then
 			-- factorisation du if
 			-- Rq: pour attente et chargement il n'est pas nécessaire
 			if ld = '1' and bufferE = '1' then
 				-- stockage de data dans le buffer par anticipation
 				bufferT <= data;
-				bufferE := '0';
+				bufferE <= '0';
 			else
 				-- NOP
 					end if;
@@ -53,7 +54,7 @@ begin
 					-- etat_dbg <= 1;
 					if ld = '1' then
 						bufferT <= data;
-						bufferE := '0';
+						bufferE <= '0';
 						etat := Chargement;
 						cpt := 8;
 					else
@@ -62,40 +63,48 @@ begin
 				when Chargement =>
 					-- etat_dbg <= 2;
 					registerT <= bufferT;
-					bufferE := '1';
+					bufferE <= '1';
 					regE <= '0';
 					etat := BitStart;
 				when BitStart =>
-					-- etat_dbg <= 3;
-					txd <= '0';
-					etat := Emission;
+					if enable = '1' then
+						-- etat_dbg <= 3;
+						txd <= '0';
+						etat := Emission;
+					end if;
 				when Emission =>
-					-- lowering CPT
-					cpt := cpt - 1;
-					-- etat_dbg <= 4;
-					txd <= registerT(cpt);
-					par <= par xor registerT(cpt);
-					
-					if cpt > 0 then
-						-- On reste dans l'etat Emission
-					else
-						etat := Parite;
+					if enable = '1' then
+						-- lowering CPT
+						cpt := cpt - 1;
+						-- etat_dbg <= 4;
+						txd <= registerT(cpt);
+						par <= par xor registerT(cpt);
+						
+						if cpt > 0 then
+							-- On reste dans l'etat Emission
+						else
+							etat := Parite;
+						end if;
 					end if;
 				when Parite =>
-					-- etat_dbg <= 5;					
-					txd <= par;
-					etat := BitStop;
+					if enable = '1' then
+						-- etat_dbg <= 5;					
+						txd <= par;
+						etat := BitStop;
+					end if;
 				when BitStop =>
-					-- etat_dbg <= 6;
-					txd <= '1';
-					regE <= '1';
-					if bufferE = '0' or ld = '1' then
-						-- dans le cas ou un ordre est donné au dernier moment (ld = '1'), 
-						-- il faut directement repasser en Chargement
-						etat := Chargement;
-						cpt := 8;
-					else
-						etat := Attente;
+					if enable = '1' then
+						-- etat_dbg <= 6;
+						txd <= '1';
+						regE <= '1';
+						if bufferE = '0' or ld = '1' then
+							-- dans le cas ou un ordre est donné au dernier moment (ld = '1'), 
+							-- il faut directement repasser en Chargement
+							etat := Chargement;
+							cpt := 8;
+						else
+							etat := Attente;
+						end if;
 					end if;
 			end case;
 		end if;
