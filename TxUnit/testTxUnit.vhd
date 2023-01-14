@@ -142,7 +142,7 @@ BEGIN
      wait for 3000 ns;
      	
      -- maintien du reset durant 100 ns.
-	  reset <= '0';
+	   reset <= '0';
      wait for 100 ns;
      reset <= '1';
 

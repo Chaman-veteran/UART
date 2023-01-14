@@ -45,29 +45,47 @@ begin
 		variable start : boolean := false;
 		variable cptBit : natural := 0;
 	begin
-		if RxD = '0' and not start then
-			start := true;
-		end if;
+		-- if RxD = '0' and not start then
+		-- 	start := true;
+		-- 	tmpRxd <= RxD;
+		-- end if;
 		
-		if cptBit = 11 then
-			start := false;
-			cptBit := 0;
-		end if;
+		-- if cptBit = 11 then
+		-- 	start := false;
+		-- 	cptBit := 0;
+		-- end if;
 		
 		if reset = '0' then
 			value := 0;
 			cptBit := 0;
-		elsif (rising_edge(enable) and start) then
-			if value = 7 then -- milieu d'une clk
-				tmprxd <= RxD;
-				value := value + 1;
-				tmpclk <= 1;
-			elsif value = 15 then 
-				-- fin de cycle
-				value := 0;
-				cptBit := cptBit + 1;
-			else value := value + 1;
-				tmpclk <= 0;
+		elsif (rising_edge(enable)) then
+			if RxD = '0' and not start then
+				start := true;
+				tmpRxd <= RxD;
+			end if;
+			if cptBit = 11 then
+				start := false;
+				cptBit := 0;
+				tmpclk <= '0';
+			end if;
+
+			if start then
+				if value = 7 and cptBit = 0 then
+					-- on commence au milieu d'une clk 
+					tmprxd <= RxD;
+					tmpclk <= '1';
+					value := 0;
+					cptBit := cptBit + 1;
+				elsif value = 15 then 
+					-- fin de cycle
+					tmprxd <= RxD;
+					tmpclk <= '1';
+					value := 0;
+					cptBit := cptBit + 1;
+				else
+					value := value + 1;
+					tmpclk <= '0';
+				end if;
 			end if;
 		end if;
 	end process;
