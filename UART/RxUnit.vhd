@@ -8,137 +8,138 @@ library IEEE;
      read             : in  std_logic;
      rxd              : in  std_logic;
      data             : out std_logic_vector(7 downto 0);
-     Ferr, OErr, DRdy : out std_logic;
-	 temprxd, tempclk : out std_logic;
-	 state_debug : out natural);
+     Ferr, OErr, DRdy : out std_logic);
+	  -- temprxd, tempclk : out std_logic;
+	  --parite, iserror : out std_logic);
  end RxUnit;
  
  architecture RxUnit_arch of RxUnit is
-	 COMPONENT Compteur_16
-		PORT(
-			enable : IN std_logic;
-			reset : IN std_logic;
-			RxD : IN std_logic;          
-			tmpclk : OUT std_logic;
-			tmprxd : OUT std_logic
-			);
-		END COMPONENT;
-		signal tmpclk : std_logic;
-		signal tmprxd : std_logic;
-		signal cpt_bit : natural := 0;
-		signal parite : std_logic;
-		signal ferror, oerror, dready : std_logic;
-		signal bitStop : std_logic;
-		signal error : std_logic;
+	 type Tcompteur is (Idle, Counting, Sending);
+	 signal currTCount : Tcompteur := Idle;
+	 signal to_count : natural;
+	 signal cptBitCounter : natural;
+	 signal tmprxd : std_logic;
+	 signal tmpclk : std_logic;
+	 -- signals for the builder
+	 type TBuilder is (Idle, Receiving, Parity, BitStop, ReadCheck);
+	 signal currTBuild : Tbuilder := Idle;
+	 signal cptBitBuilder : natural;
+	 signal error : std_logic;
+	 signal tmpDat : std_logic_vector(7 downto 0);
+	 signal par : std_logic;
  begin
-	Ferr <= ferror;
-	OErr <= oerror;
-	DRdy <= dready;
-	temprxd <= tmprxd;
-	tempclk <= tmpclk;
-
-	process(tmpclk, reset)
-		variable tmp_dat : std_logic_vector(7 downto 0) := "00000000";
-		-- variable error : std_logic;
-	begin
-		if reset = '0' then
-			cpt_bit <= 0;
-			parite <= '0';
-			error <= '0';
-			data <= "00000000";
-		elsif (rising_edge(tmpclk)) then
-			case cpt_bit is
-				when 0 => -- bit start
-					BitStop <= '0';
-					parite <= '0';
-					if (tmprxd = '0') then
-						-- bitStart ok
-						cpt_bit <= cpt_bit + 1;
-					else
-						-- bitStart nok: 
-						-- on fait rien
-						error <= '0';
-					end if;
-				when 9 => -- bit parité
-					if (parite = tmprxd) then 
-						-- parité ok
-						-- on ne fait rien
-					else
-						error <= '1';
-					end if;
-					cpt_bit <= cpt_bit + 1;
-				when 10 => -- bit stop
-					bitStop <= '1';
-					if error = '0' then
-						data <= tmp_dat;
-					end if;
-					cpt_bit <= 0;
-				when others => -- bits de l'octet
-					tmp_dat(8 - cpt_bit) := tmprxd;  -- voir le sens ?
-					-- bit parite
-					parite <= parite and tmprxd;
-					cpt_bit <= cpt_bit + 1;
-			end case;
-		end if;
-	end process;
-
-	-- process assurant que OErr et FErr ne sont à 1 que pendant 1 enableRx
-	process(clk, reset)
-		type State is (Nominal, Clear, Dreadry, Oerr);
-		variable etat : State := Nominal;
+	-- temprxd <= tmprxd;
+	-- tempclk <= tmpclk;
+	-- parite <= par;
+	-- iserror <= error;
+	-- process for the counter
+	process (enable, reset)
 	begin
 		if (reset = '0') then
-			dready <= '0';
-			ferror <= '0';
-			oerror <= '0';
-			etat := Nominal;
-			state_debug <= 0;
-		elsif (rising_edge(clk)) then
-			case etat is
-			when Nominal =>
-				state_debug <= 1;
-				if bitStop = '1' then
-				-- vérification de la conformité du bitStop
-					if (tmprxd = '1' and error = '0') then
-						-- pas d'erreur, fin de transmission
-						etat := Dreadry;
-					else
-						ferror <= '1';
-						etat := Clear;
+			-- signals back to their default value
+			tmpclk <= '0';
+			tmprxd <= '1';
+			currTCount <= Idle;
+		elsif rising_edge(enable) then
+			case currTCount is 
+				when Idle =>
+					if (rxd = '0') then
+						to_count <= 7;
+						cptBitCounter <= 11;
+						currTCount <= Counting;
+					else -- rxd = '0'
+						
+						null;
 					end if;
-				end if;
-			when Dreadry =>
-				dready <= '1';
-				state_debug <= 2;
-				etat := Oerr;
-			when Oerr =>
-				-- vérification que le processeur a lu la donnée, sinon erreur
-				if (read = '1') then
-					--ok
-				else
-					oerror <= '1';
-				end if;
-				dready <= '0';
-				state_debug <= 3;
-				etat := Clear;
-			when Clear => -- (reset) etat dans lequel on est après l'envoi complet d'une trame
-				state_debug <= 4;
-				dready <= '0'; -- ne reste up qu'une clk
-				ferror <= '0';
-				oerror <= '0';
-				if (rising_edge(tmpclk)) then
-					etat := Nominal;
-				end if;
+				when Counting =>
+					if (to_count > 0) then
+						to_count <= to_count - 1;
+					else -- to_count = 0
+						tmprxd <= rxd;
+						cptBitCounter <= cptBitCounter - 1;
+						tmpclk <= '1';
+						currTCount <= Sending;
+					end if;
+				when Sending =>
+					if (cptBitCounter > 0) then
+						to_count <= 14;
+						tmpclk <= '0';
+						currTCount <= Counting;
+					else -- cptBitCounter = 0
+						tmpclk <= '0';
+						currTCount <= Idle;
+					end if;
 			end case;
 		end if;
 	end process;
 
-	Inst_Compteur_16: Compteur_16 PORT MAP(
-		enable => enable,
-		reset => reset,
-		RxD => rxd,
-		tmpclk => tmpclk,
-		tmprxd => tmprxd
-	);
-
+	-- process for building the data
+	process (clk, reset)
+	begin
+		if (reset = '0') then
+			-- signals back to their default value
+			Ferr <= '0';
+			OErr <= '0';
+			DRdy <= '0';
+			currTBuild <= Idle;
+			data <= (others => '0');
+			tmpDat <= (others => '0');
+		elsif rising_edge(clk) then
+			case currTBuild is 
+				when Idle=>
+					if (tmpclk = '1') then
+						cptBitBuilder <= 0;
+						par <= '0';
+						error <= '0';
+						currTBuild <= Receiving;
+					else -- tmpclk = 0
+						Ferr <= '0';
+						OErr <= '0';
+					end if;
+				when Receiving =>
+					if (tmpclk = '0') then
+						-- synchronized on tmpclk, so we wait
+						null;
+					elsif (tmpclk = '1' and cptBitBuilder < 8) then 
+						-- continue receiving a bit
+						par <= par xor tmprxd;
+						tmpdat (7 - cptBitBuilder) <= tmprxd;
+						cptBitBuilder <= cptBitBuilder + 1;
+					else -- tmpclk = 1 and cptBitBuilder = 8
+						-- received all the bits, change state
+						-- check if the parity bit is ok
+						error <= (par xor tmprxd);
+						currTBuild <= Parity;
+					end if;
+				when Parity =>
+					if (tmpclk = '0') then 
+						null;
+					else -- tmpclk = 1
+						-- check if the stop bit's value is equal to 1
+						error <= error or (not tmprxd);
+						currTBuild <= BitStop;
+					end if;
+				when BitStop =>
+					if (error = '1') then
+						-- there was an error during the reception of the byte
+						Ferr <= '1';
+						currTBuild <= Idle;
+					else -- error = 0
+						data <= tmpDat;
+						DRdy <= '1';
+						currTBuild <= ReadCheck;
+					end if;
+				when ReadCheck =>
+					if (read = '0') then
+						-- the processor did not read the data
+						DRdy <= '0';
+						OErr <= '1';
+					else
+						-- read OK
+						DRdy <= '0';
+					end if;
+					currTbuild <= Idle;
+			end case;
+		end if;
+	end process;
  end RxUnit_arch;

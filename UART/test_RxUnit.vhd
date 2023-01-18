@@ -49,17 +49,11 @@ ARCHITECTURE behavior OF testRxUnit IS
          data : OUT  std_logic_vector(7 downto 0);
          Ferr : OUT  std_logic;
          OErr : OUT  std_logic;
-         DRdy : OUT  std_logic
-        );
-    END COMPONENT;
-
-    -- Horloge qui cadence rx et tx unit
-    COMPONENT clkUnit
-    PORT(
-         clk : IN  std_logic;
-         reset : IN  std_logic;
-         enableTX : OUT  std_logic;
-         enableRX : OUT  std_logic
+         DRdy : OUT  std_logic;
+			temprxd : OUT std_logic;
+			tempclk : OUT std_logic;
+			parite : OUT std_logic;
+			iserror : OUT std_logic
         );
     END COMPONENT;
     
@@ -77,6 +71,10 @@ ARCHITECTURE behavior OF testRxUnit IS
    signal Ferr : std_logic;
    signal OErr : std_logic;
    signal DRdy : std_logic;
+	signal temprxd : std_logic;
+	signal tempclk : std_logic;
+	signal parite : std_logic;
+	signal iserror : std_logic;
 
    -- Clock period definitions
    constant clk_period : time := 10 ns;
@@ -93,7 +91,11 @@ BEGIN
           data => data,
           Ferr => Ferr,
           OErr => OErr,
-          DRdy => DRdy
+          DRdy => DRdy,
+			 temprxd => temprxd,
+			 tempclk => tempclk,
+			 parite => parite, 
+			 iserror => iserror
         );
 
    -- Instantiate the clkUnit
