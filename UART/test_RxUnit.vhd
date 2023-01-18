@@ -49,11 +49,7 @@ ARCHITECTURE behavior OF testRxUnit IS
          data : OUT  std_logic_vector(7 downto 0);
          Ferr : OUT  std_logic;
          OErr : OUT  std_logic;
-         DRdy : OUT  std_logic;
-			temprxd : OUT std_logic;
-			tempclk : OUT std_logic;
-			parite : OUT std_logic;
-			iserror : OUT std_logic
+         DRdy : OUT  std_logic
         );
     END COMPONENT;
     
@@ -71,10 +67,6 @@ ARCHITECTURE behavior OF testRxUnit IS
    signal Ferr : std_logic;
    signal OErr : std_logic;
    signal DRdy : std_logic;
-	signal temprxd : std_logic;
-	signal tempclk : std_logic;
-	signal parite : std_logic;
-	signal iserror : std_logic;
 
    -- Clock period definitions
    constant clk_period : time := 10 ns;
@@ -91,11 +83,7 @@ BEGIN
           data => data,
           Ferr => Ferr,
           OErr => OErr,
-          DRdy => DRdy,
-			 temprxd => temprxd,
-			 tempclk => tempclk,
-			 parite => parite, 
-			 iserror => iserror
+          DRdy => DRdy
         );
 
    -- Instantiate the clkUnit
@@ -116,10 +104,17 @@ BEGIN
    begin		
       -- hold reset state for 100 ns.
       wait for 100 ns;	
-      reset <= '1';
+      reset <= '1',
+					'0' after 2200 ns,
+					'1' after 2250 ns, 
+					'0' after 4100 ns, 
+					'1' after 4150 ns,
+					'0' after 6100 ns,
+					'1' after 6150 ns;
       rxd <= '1';
       read <= '0';
 
+		-- first test : normal behavior
       wait for 200 ns;
       rxd <= '0',  -- start bit
              '1' after 160 ns,  -- data bit 0
@@ -131,13 +126,53 @@ BEGIN
              '1' after 1120 ns,  -- data bit 6
              '0' after 1280 ns,  -- data bit 7
              '0' after 1440 ns,  -- parite bit
-             '1' after 1600 ns;  -- stop bit
-				 
+             '1' after 1600 ns,  -- stop bit
+				 -- second test : the received byte is incorrect (parity is incorrect)
+				 '0' after 1960 ns,  -- start bit
+             '1' after 2120 ns,  -- data bit 0
+             '0' after 2380 ns,  -- data bit 1
+             '1' after 2540 ns,  -- data bit 2
+             '0' after 2700 ns,  -- data bit 3
+             '1' after 2860 ns,  -- data bit 4
+             '0' after 3020 ns,  -- data bit 5
+             '1' after 3180 ns,  -- data bit 6
+             '0' after 3340 ns,  -- data bit 7
+             '1' after 3500 ns,  -- parity bit incorrect
+             '1' after 3660 ns,  -- stop bit
+				 -- third test : the stop bit is incorrect
+				 '0' after 3960 ns,  -- start bit
+				 '1' after 4120 ns,  -- data bit 0
+				 '0' after 4280 ns,  -- data bit 1
+				 '1' after 4440 ns,  -- data bit 2
+				 '0' after 4600 ns,  -- data bit 3
+				 '1' after 4760 ns,  -- data bit 4
+				 '0' after 4920 ns,  -- data bit 5
+				 '1' after 5080 ns,  -- data bit 6
+				 '0' after 5240 ns,  -- data bit 7
+				 '0' after 5400 ns,  -- parity bit 
+				 '0' after 5560 ns,  -- stop bit is incorrect
+				 '1' after 5700 ns,
+				 -- fourth test: byte reception is ok, but read comes too late
+				 '0' after 5960 ns,  -- start bit
+             '1' after 6120 ns,  -- data bit 0
+             '0' after 6280 ns,  -- data bit 1
+             '1' after 6440 ns,  -- data bit 2
+             '0' after 6600 ns,  -- data bit 3
+             '1' after 6760 ns,  -- data bit 4
+             '0' after 6920 ns,  -- data bit 5
+             '1' after 7080 ns,  -- data bit 6
+             '0' after 7240 ns,  -- data bit 7
+             '0' after 7400 ns,  -- parity bit 
+             '1' after 7560 ns;  -- stop bit
+
 		read <= '1' after 1700 ns,
-			     '0' after 1760 ns;
+			     '0' after 1760 ns,
+				  -- delayed read
+				  '1' after 7800 ns,
+				  '0' after 7850 ns;
+		
 
-      
-
+		
       wait;
    end process;
 
