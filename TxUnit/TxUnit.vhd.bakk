@@ -1,0 +1,90 @@
+library IEEE;
+use IEEE.std_logic_1164.all;
+
+entity TxUnit is
+  port (
+    clk, reset : in std_logic;
+    enable : in std_logic;
+    ld : in std_logic;
+    txd : out std_logic;
+    regE : out std_logic;
+    bufE : out std_logic;
+    data : in std_logic_vector(7 downto 0));
+end TxUnit;
+
+architecture behavorial of TxUnit is
+
+	type t_etat is (parite,stop,start,envoi,charge_buff,repos);
+	signal etat : t_etat;
+	signal RegisterT : std_logic_vector(7 downto 0);
+	signal BufferT : std_logic_vector(7 downto 0);
+	signal p : std_logic;
+	signal compteur : natural;
+	signal e_bufE : std_logic;
+	
+begin
+
+	process (clk, reset)
+	begin
+		if (reset='0') then
+			txd <= '1';
+			bufE <= '1';
+			e_bufE <= '1';
+			regE <= '1';
+			etat <= repos;
+			compteur <= 7;
+			
+		elsif (rising_edge(clk)) then
+			if (ld = '1' and e_bufE = '1') then
+				BufferT <= data;
+				bufE <= '0';
+				e_bufE <= '0';
+			end if;
+			case etat is
+				when repos =>
+					if (ld = '1') then
+						etat <= charge_buff;
+					end if;
+				when charge_buff =>
+					RegisterT <= BufferT;
+					bufE <= '1';
+					e_bufE <= '1';
+					regE <= '0';
+					etat <= start;
+				when start =>
+					if (enable = '1') then
+						txd <= '0';
+						p <= '0';
+						etat <= envoi;
+					end if;
+				when envoi =>
+					if (enable = '1' and compteur > 0) then
+						txd <= RegisterT(compteur);
+						p <= p xor RegisterT(compteur);
+						compteur <= compteur - 1;
+					elsif (enable = '1' and compteur = 0) then
+						txd <= RegisterT(compteur);
+						p <= p xor RegisterT(compteur);
+						compteur <= 7;
+						etat <= parite;
+					end if;
+				when parite =>
+					if (enable = '1') then
+					txd <= p;
+					etat <= stop;
+					end if;
+				when stop =>
+					if (enable = '1') then
+						txd <= '1';
+						regE <= '1';
+						if (e_bufE = '0') then
+							etat <= charge_buff;
+						else
+							etat <= repos;
+						end if;
+					end if;
+			end case;
+		end if;
+	end process;
+
+end behavorial;

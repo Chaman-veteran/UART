@@ -50,12 +50,14 @@ library IEEE;
 			case cpt_bit is
 				when 0 => -- bit start
 					BitStop <= '0';
+					parite <= '0';
 					if (tmprxd = '0') then
 						-- bitStart ok
 						cpt_bit <= cpt_bit + 1;
 					else
 						-- bitStart nok: 
 						-- on fait rien
+						error <= '0';
 					end if;
 				when 9 => -- bit parité
 					if (parite = tmprxd) then 
@@ -99,7 +101,6 @@ library IEEE;
 				-- vérification de la conformité du bitStop
 					if (tmprxd = '1' and error = '0') then
 						-- pas d'erreur, fin de transmission
-						dready <= '1';
 						etat := Dreadry;
 					else
 						ferror <= '1';
@@ -107,20 +108,19 @@ library IEEE;
 					end if;
 				end if;
 			when Dreadry =>
+				dready <= '1';
 				state_debug <= 2;
+				etat := Oerr;
+			when Oerr =>
 				-- vérification que le processeur a lu la donnée, sinon erreur
 				if (read = '1') then
 					--ok
-					etat := Clear;
 				else
 					oerror <= '1';
-					etat := Oerr;
 				end if;
 				dready <= '0';
-			when Oerr => 
 				state_debug <= 3;
 				etat := Clear;
-				oerror <= '0';
 			when Clear => -- (reset) etat dans lequel on est après l'envoi complet d'une trame
 				state_debug <= 4;
 				dready <= '0'; -- ne reste up qu'une clk

@@ -26,7 +26,6 @@ begin
 		variable etat : type_etat := Attente;
 		variable cpt : natural := 7;
 	begin
-		bufE <= bufferE;
 		if reset = '0' then
 			-- On remet les variables/signaux a 0 a reset
 			etat := Attente;
@@ -36,9 +35,10 @@ begin
 			bufferE <= '1';
 			regE <= '1';
 			txd <= '1';
-			par <= '1';
-			cpt := 7;
+			par <= '0';
+			cpt := 8;
 		elsif rising_edge(clk) then
+			bufE <= bufferE;
 			-- factorisation du if
 			-- Rq: pour attente et chargement il n'est pas nécessaire
 			if ld = '1' and bufferE = '1' then
@@ -56,9 +56,9 @@ begin
 						bufferT <= data;
 						bufferE <= '0';
 						etat := Chargement;
-						cpt := 8;
 					else
 						-- NOP
+						bufE <= '1';
 					end if;
 				when Chargement =>
 					-- etat_dbg <= 2;
@@ -97,11 +97,12 @@ begin
 						-- etat_dbg <= 6;
 						txd <= '1';
 						regE <= '1';
+						par <= '0';
+						cpt := 8;
 						if bufferE = '0' or ld = '1' then
 							-- dans le cas ou un ordre est donné au dernier moment (ld = '1'), 
 							-- il faut directement repasser en Chargement
 							etat := Chargement;
-							cpt := 8;
 						else
 							etat := Attente;
 						end if;

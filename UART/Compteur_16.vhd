@@ -62,6 +62,8 @@ begin
 			if RxD = '0' and not start then
 				start := true;
 				tmpRxd <= RxD;
+			elsif not start then
+				tmpRxd <= '1';
 			end if;
 			if cptBit = 11 then
 				start := false;

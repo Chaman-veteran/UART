@@ -2,10 +2,10 @@
 -- Company: 
 -- Engineer:
 --
--- Create Date:   14:50:15 01/13/2023
+-- Create Date:   17:56:26 01/13/2023
 -- Design Name:   
--- Module Name:   /media/quentin/d0333baa-bef8-4d5a-8315-2c0f07cad24a1/Documents/Annee_2/Archi/UART_Emission_FRATY_MAILLET/UART/test_RxUnit.vhdl
--- Project Name:  test_Rx2
+-- Module Name:   /home/jprevost/Bureau/2A/archi/uart/UART/testRxUnit.vhd
+-- Project Name:  projet_uart
 -- Target Device:  
 -- Tool versions:  
 -- Description:   
@@ -32,10 +32,10 @@ USE ieee.std_logic_1164.ALL;
 -- arithmetic functions with Signed or Unsigned values
 --USE ieee.numeric_std.ALL;
  
-ENTITY test_RxUnit IS
-END test_RxUnit;
+ENTITY testRxUnit IS
+END testRxUnit;
  
-ARCHITECTURE behavior OF test_RxUnit IS 
+ARCHITECTURE behavior OF testRxUnit IS 
  
     -- Component Declaration for the Unit Under Test (UUT)
  
@@ -49,50 +49,55 @@ ARCHITECTURE behavior OF test_RxUnit IS
          data : OUT  std_logic_vector(7 downto 0);
          Ferr : OUT  std_logic;
          OErr : OUT  std_logic;
-         DRdy : OUT  std_logic;
-         temprxd : OUT std_logic;
-			tempclk : OUT std_logic;
-			state_debug : out natural
+         DRdy : OUT  std_logic
+        );
+    END COMPONENT;
+
+    -- Horloge qui cadence rx et tx unit
+    COMPONENT clkUnit
+    PORT(
+         clk : IN  std_logic;
+         reset : IN  std_logic;
+         enableTX : OUT  std_logic;
+         enableRX : OUT  std_logic
         );
     END COMPONENT;
     
 
    --Inputs
-   signal clk     : std_logic    := '0';
-   signal reset   : std_logic    := '0';
-   signal enable  : std_logic    := '0';
-   signal read    : std_logic    := '0';
-   signal rxd     : std_logic    := '1';
+   signal clk : std_logic := '0';
+   signal reset : std_logic := '0';
+   signal enableRx : std_logic := '0';
+	signal enableTx : std_logic := '0';
+   signal read : std_logic := '0';
+   signal rxd : std_logic := '0';
 
  	--Outputs
    signal data : std_logic_vector(7 downto 0);
    signal Ferr : std_logic;
    signal OErr : std_logic;
    signal DRdy : std_logic;
-   signal temprxd : std_logic;
-	signal tempclk : std_logic;
-	signal state_debug	: natural;
 
    -- Clock period definitions
    constant clk_period : time := 10 ns;
-
+ 
 BEGIN
  
 	-- Instantiate the Unit Under Test (UUT)
    uut: RxUnit PORT MAP (
           clk => clk,
           reset => reset,
-          enable => enable,
+          enable => enableRX,
           read => read,
           rxd => rxd,
           data => data,
           Ferr => Ferr,
           OErr => OErr,
-          DRdy => DRdy,
-			 temprxd => temprxd,
-			 tempclk => tempclk,
-			 state_debug => state_debug
+          DRdy => DRdy
         );
+
+   -- Instantiate the clkUnit
+   enableRx <= clk and reset;
 
    -- Clock process definitions
    clk_process :process
@@ -103,53 +108,35 @@ BEGIN
 		wait for clk_period/2;
    end process;
  
-   enable <= clk and reset;
 
    -- Stimulus process
    stim_proc: process
    begin		
       -- hold reset state for 100 ns.
-      read <= '0';
-      wait for 100 ns;
+      wait for 100 ns;	
       reset <= '1';
-      -- bit start
-      rxd <= '0';
-      wait for 16*clk_period;
+      rxd <= '1';
+      read <= '0';
+
+      wait for 200 ns;
+      rxd <= '0',  -- start bit
+             '1' after 160 ns,  -- data bit 0
+             '0' after 320 ns,  -- data bit 1
+             '1' after 480 ns,  -- data bit 2
+             '0' after 640 ns,  -- data bit 3
+             '1' after 800 ns,  -- data bit 4
+             '0' after 960 ns,  -- data bit 5
+             '1' after 1120 ns,  -- data bit 6
+             '0' after 1280 ns,  -- data bit 7
+             '0' after 1440 ns,  -- parite bit
+             '1' after 1600 ns;  -- stop bit
+				 
+		read <= '1' after 1700 ns,
+			     '0' after 1760 ns;
+
       
-      -- on envoie 01010101
-      rxd <= '0';
-      wait for 16*clk_period;
-      rxd <= '1';
-      wait for 16*clk_period;
-      rxd <= '0';
-      wait for 16*clk_period;
-      rxd <= '1';
-      wait for 16*clk_period;
-      rxd <= '0';
-      wait for 16*clk_period;
-      rxd <= '1';
-      wait for 16*clk_period;
-      rxd <= '0';
-      wait for 16*clk_period;
-      rxd <= '1';
-      wait for 16*clk_period;
-
-      -- bit de partié
-      rxd <= '0';
-      wait for 16*clk_period;
-      rxd <= '1';
-		wait for 8*clk_period;
-		-- bit stop
-		wait for clk_period;
-		read <= '1';
-		wait for 8*clk_period;
-		read <= '0';
-
-      wait for clk_period*10;
-
 
       wait;
    end process;
 
 END;
-      -- insert stimulus here 
